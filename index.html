@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Uttarakhand Travel Planner</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <h1>Uttarakhand Travel Planner</h1>
+    <p>Explore the beautiful cities and rich culture of Devbhoomi Uttarakhand</p>
+    
+    <form id="cityForm">
+        <label for="startCity">Starting City:</label><br>
+        <select id="startCity">
+            {% for city in cities %}
+                <option value="{{ city }}">{{ city }}</option>
+            {% endfor %}
+        </select><br><br>
+
+        <label for="cities">Select Cities to Visit (Hold Ctrl to select multiple):</label><br>
+        <select id="cities" multiple>
+            {% for city in cities %}
+                <option value="{{ city }}">{{ city }}</option>
+            {% endfor %}
+        </select><br><br>
+        <button type="button" onclick="planRoute()">Plan Your Uttarakhand Journey</button>
+    </form>
+
+    <div id="cityCultureInfo" class="city-info"></div>
+
+    <h2>Results:</h2>
+    <div id="results">
+        <div class="algorithm-comparison">
+            <div id="bruteForceRoute" class="algorithm-box">
+                <h3>Brute Force Approach</h3>
+                <p><strong>Route:</strong> <span id="bfRoute"></span></p>
+                <p><strong>Distance:</strong> <span id="bfDistance"></span> km</p>
+                <p><strong>Time:</strong> <span id="bfTime"></span> seconds</p>
+            </div>
+            
+            <div id="dpRoute" class="algorithm-box">
+                <h3>Dynamic Programming Approach</h3>
+                <p><strong>Route:</strong> <span id="dpRouteText"></span></p>
+                <p><strong>Distance:</strong> <span id="dpDistance"></span> km</p>
+                <p><strong>Time:</strong> <span id="dpTime"></span> seconds</p>
+            </div>
+        </div>
+
+        <div class="comparison">
+            <h3>Algorithm Comparison</h3>
+            <div class="stats-box">
+                <div class="stats-item">Distance difference: <span id="distanceDiff"></span> km</div>
+                <div class="stats-item">Time difference: <span id="timeDiff"></span> seconds</div>
+                <div class="stats-item">Dynamic Programming was <span id="timeRatio" class="highlight"></span> times faster</div>
+            </div>
+        </div>
+
+        <div id="bfRoutesSection">
+            <h3>All Possible Routes (Brute Force):</h3>
+            <ul id="allRoutes"></ul>
+        </div>
+    </div>
+
+    <h2>Route Map:</h2>
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        let map = L.map('map').setView([30.0668, 79.0193], 8); // Centered on Uttarakhand
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 18,
+        }).addTo(map);
+
+        // Add cultural info when cities are selected
+        document.getElementById('cities').addEventListener('change', function() {
+            const selectedCities = Array.from(this.selectedOptions).map(opt => opt.value);
+            const cityInfoDiv = document.getElementById('cityCultureInfo');
+            cityInfoDiv.innerHTML = '';
+            
+            if (selectedCities.length > 0) {
+                cityInfoDiv.innerHTML = '<h3>Cultural Information</h3>';
+                selectedCities.forEach(city => {
+                    fetch('/get_city_info?city=' + encodeURIComponent(city))
+                        .then(response => response.json())
+                        .then(data => {
+                            const cityDiv = document.createElement('div');
+                            cityDiv.innerHTML = `
+                                <h4>${city}</h4>
+                                <p><strong>Culture:</strong> ${data.culture}</p>
+                                <p><strong>Unique Feature:</strong> ${data.unique}</p>
+                                <hr>
+                            `;
+                            cityInfoDiv.appendChild(cityDiv);
+                        });
+                });
+            }
+        });
+
+        async function planRoute() {
+            const startCity = document.getElementById("startCity").value;
+            const selectedCities = Array.from(document.getElementById("cities").selectedOptions)
+                .map(option => option.value);
+
+            if (selectedCities.length < 1) {
+                alert("Please select at least one city to visit");
+                return;
+            }
+
+            const response = await fetch("/plan", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ cities: selectedCities, start_city: startCity }),
+            });
+
+            const data = await response.json();
+            if (data.error) {
+                alert(data.error);
+                return;
+            }
+
+            // Display brute force results
+            document.getElementById("bfRoute").innerText = data.brute_force.route.join(" → ");
+            document.getElementById("bfDistance").innerText = data.brute_force.distance;
+            document.getElementById("bfTime").innerText = data.brute_force.time;
+
+            // Display DP results
+            document.getElementById("dpRouteText").innerText = data.dynamic_programming.route.join(" → ");
+            document.getElementById("dpDistance").innerText = data.dynamic_programming.distance;
+            document.getElementById("dpTime").innerText = data.dynamic_programming.time;
+
+            // Display comparison
+            document.getElementById("distanceDiff").innerText = data.comparison.distance_diff;
+            document.getElementById("timeDiff").innerText = data.comparison.time_diff;
+            document.getElementById("timeRatio").innerText = data.comparison.time_ratio;
+
+            // Display all routes (from brute force)
+            const allRoutesList = document.getElementById("allRoutes");
+            allRoutesList.innerHTML = "";
+            if (data.brute_force.all_routes && data.brute_force.all_routes.length > 0) {
+                data.brute_force.all_routes.forEach(route => {
+                    const li = document.createElement("li");
+                    li.innerText = `${route.route.join(" → ")} - Distance: ${route.distance} km`;
+                    allRoutesList.appendChild(li);
+                });
+            } else {
+                allRoutesList.innerHTML = "<li>No alternative routes calculated</li>";
+            }
+
+            // Display the route on the map (using DP route)
+            map.eachLayer(layer => {
+                if (layer instanceof L.Polyline || layer instanceof L.Marker) {
+                    map.removeLayer(layer);
+                }
+            });
+
+            const coordinates = data.coordinates;
+            const latLngs = coordinates.map(city => [city.lat, city.lon]);
+            L.polyline(latLngs, { color: 'blue' }).addTo(map);
+
+            coordinates.forEach(city => {
+                L.marker([city.lat, city.lon]).addTo(map)
+                    .bindPopup(`<b>${city.city}</b>`);
+            });
+
+            map.fitBounds(latLngs);
+        }
+    </script>
+</body>
+</html>
