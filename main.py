@@ -17,7 +17,8 @@ def contact_us():
 # TRP Service :-
 @app.route('/trp-service')
 def trp_service():
-    return render_template("trp-service.html")
+    cities = ["Dehradun", "Agra", "Delhi"]
+    return render_template("trp-service.html", cities = cities)
 
 
 
