@@ -13,6 +13,26 @@
             "url": "https://travel-route-planner.bss.design/"
         }
     </script>
+    <script>
+        function updateCity(option) {
+            $("#current-city").val(option);
+            if($("#submit-city").hasClass("disabled")) {
+                $("#submit-city").removeClass("disabled");
+            }
+        }
+        function submitCity() {
+            selected_city = $("#current-city").val();
+            $('.nav-tabs a[href="#trip-location"]').tab('show');
+            $.ajax({
+                type: "POST",
+                url: "/get-city-locations",
+                data: { city: selected_city },
+                success: function(response) {
+                    $('#content-insertion-row').html(response);
+                }
+            });
+        }
+    </script>
     <link rel="stylesheet" href="static/bootstrap/css/bootstrap.min.css">
     <link rel="stylesheet" href="static/css/Montserrat.css">
     <link rel="stylesheet" href="static/css/baguetteBox.min.css">
@@ -73,14 +93,14 @@
                                                         type="button">Cities</button>
                                                     <div class="dropdown-menu">
                                                         {% for city in cities %}
-                                                            <a class="dropdown-item" href="#">{{ city }}</a>
+                                                            <a class="dropdown-item" onclick="updateCity('{{city}}')">{{ city }}</a>
                                                         {% endfor %}
                                                     </div>
                                                 </div>
                                             </div>
                                             <p class="text-info mt-3">Description : No Option Selected</p>
-                                            <div class="d-flex justify-content-end"><a class="btn btn-success disabled"
-                                                    role="button" href="trp-service">Confirm</a></div>
+                                            <div class="d-flex justify-content-end"><a id="submit-city" class="btn btn-success disabled"
+                                                    role="button" onclick="submitCity()">Confirm</a></div>
                                         </div>
                                     </div>
                                     <p>*Currently there are a limited number of cities available since we are gathering
@@ -94,7 +114,7 @@
                                         <div class="container">
                                             <form class="form-control" method="post">
                                                 <div class="products">
-                                                    <div class="row g-0">
+                                                    <div class="row g-0" id="content-insertion-row">
                                                         <div class="col-12 col-md-6 col-lg-4">
                                                             <div class="clean-product-item">
                                                                 <div class="image"><a href="#"><img

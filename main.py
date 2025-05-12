@@ -1,4 +1,5 @@
 from flask import Flask, redirect, render_template
+from database import Location
 
 # Application Instance : Flask Object
 app = Flask(__name__)
@@ -13,6 +14,12 @@ def home():
 @app.route('/contact-us')
 def contact_us():
     return render_template("contact-us.html")
+
+@app.route('/get-city-locations', methods=['POST'])
+def get_location_info():
+    lc = Location("GEHU", "An Institute", 0, None)
+    locations = [lc, ]
+    return render_template("location-sub-template.html", locations = locations)
 
 # TRP Service :-
 @app.route('/trp-service')
