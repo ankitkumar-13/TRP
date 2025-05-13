@@ -2,8 +2,8 @@
 <div class="col-12 col-md-6 col-lg-4">
     <div class="clean-product-item">
         <div class="image">
-            <a href="#"><img class="img-fluid d-block mx-auto" alt="lighthouse on rock formation near calm water"
-                    src="static/img/{{ location.image_path }}" /></a>
+            <img class="img-fluid d-block mx-auto" src="static/img/{{ location.image_path }}" 
+                onerror="this.onerror=null; this.src='https://upload.wikimedia.org/wikipedia/commons/b/b1/Loading_icon.gif'" />
         </div>
         <div class="product-name"><a href="#">{{ location.name }}</a></div>
         <p class="text-start">{{ location.description }}</p>
