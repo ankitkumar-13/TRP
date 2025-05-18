@@ -5,6 +5,7 @@ import time
 from functools import lru_cache
 
 app = Flask(__name__)
+
 cities = {
     # Dehradun District
     "Dehradun": {
@@ -19,7 +20,6 @@ cities = {
         "culture": "Queen of Hills with colonial heritage and beautiful churches.",
         "unique": "Camel's Back Road and Lal Tibba (highest point)."
     },
-
     # Haridwar District
     "Haridwar": {
         "lat": 29.9457, "lon": 78.1642,
@@ -118,50 +118,40 @@ cities = {
 }
 
 def haversine(lat1, lon1, lat2, lon2):
-    """Calculate the great circle distance between two points on the earth (in km)"""
-    # Convert decimal degrees to radians 
     lat1, lon1, lat2, lon2 = map(math.radians, [lat1, lon1, lat2, lon2])
-
-    # Haversine formula 
     dlat = lat2 - lat1 
     dlon = lon2 - lon1 
     a = math.sin(dlat/2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon/2)**2
     c = 2 * math.asin(math.sqrt(a)) 
-    r = 6371 # Radius of earth in kilometers
-    return round(c * r, 2)  # Rounded to 2 decimal places
+    r = 6371  # Earth's radius
+    return round(c * r, 2)
 
 def get_distance(city1, city2):
-    """Get distance between two cities, using road distance if available, else haversine with 30% buffer"""
     if city2 in cities[city1]["distances"]:
         return cities[city1]["distances"][city2]
     elif city1 in cities[city2]["distances"]:
-        return cities[city2]["distances"][city1]  # Fixed typo here
+        return cities[city2]["distances"][city1]
     else:
-        # Calculate straight-line distance with 30% buffer for realistic road distance
         lat1, lon1 = cities[city1]["lat"], cities[city1]["lon"]
         lat2, lon2 = cities[city2]["lat"], cities[city2]["lon"]
         return round(haversine(lat1, lon1, lat2, lon2) * 1.3, 2)
 
 def calculate_distance(route):
-    """Calculate the total distance of a route."""
     total_distance = 0
     for i in range(len(route) - 1):
         total_distance += get_distance(route[i], route[i+1])
     return round(total_distance, 2)
 
 def tsp_brute_force(cities_list, start_city):
-    """Solve the TSP problem using brute force (for small datasets)."""
     if len(cities_list) > 8:
-        return [], 0, []  # Prevent performance issues with too many cities
+        return [], 0, []
     
     shortest_route = None
     shortest_distance = float('inf')
     all_routes = []
-
-    # Ensure the route starts and ends at the starting city
+    
     cities_to_permute = [city for city in cities_list if city != start_city]
 
-    # Generate all possible routes
     for perm in itertools.permutations(cities_to_permute):
         route = (start_city,) + perm + (start_city,)
         try:
@@ -177,24 +167,20 @@ def tsp_brute_force(cities_list, start_city):
     return shortest_route, shortest_distance, all_routes
 
 def tsp_dp(cities_list, start_city):
-    """Solve the TSP problem using Dynamic Programming (Held-Karp algorithm)."""
-    if len(cities_list) > 15:  # DP is more efficient but still has limits
+    if len(cities_list) > 15:
         return [], 0, []
     
-    # Ensure start city is included and appears only once
-    unique_cities = list(set(cities_list + [start_city]))
-    
-    # Precompute distance matrix
+    unique_cities = sorted(list(set(cities_list + [start_city])))
     n = len(unique_cities)
     city_index = {city: idx for idx, city in enumerate(unique_cities)}
     distance_matrix = [[0]*n for _ in range(n)]
+    
     for i in range(n):
         for j in range(n):
             distance_matrix[i][j] = get_distance(unique_cities[i], unique_cities[j])
     
     start_idx = city_index[start_city]
     
-    # We'll use memoization with a decorator for the recursive function
     @lru_cache(maxsize=None)
     def dp(mask, pos):
         if mask == (1 << n) - 1:
@@ -203,26 +189,22 @@ def tsp_dp(cities_list, start_city):
         min_dist = float('inf')
         best_path = []
         
-        for city in range(n):
+        for city in sorted(range(n), key=lambda x: unique_cities[x]):
             if not (mask & (1 << city)):
                 new_mask = mask | (1 << city)
                 dist, path = dp(new_mask, city)
                 total_dist = distance_matrix[pos][city] + dist
                 
-                if total_dist < min_dist:
+                if total_dist < min_dist or (total_dist == min_dist and unique_cities[city] < unique_cities[best_path[0]]):
                     min_dist = total_dist
                     best_path = [pos] + path
         
         return min_dist, best_path
     
-    # Start with only the start city visited
     initial_mask = 1 << start_idx
     min_distance, best_path_indices = dp(initial_mask, start_idx)
-    
-    # Convert indices back to city names
     best_route = [unique_cities[i] for i in best_path_indices]
     
-    # For DP, we don't calculate all routes as it's computationally expensive
     return best_route, min_distance, []
 
 @app.route("/")
@@ -232,7 +214,7 @@ def index():
 @app.route("/plan", methods=["POST"])
 def plan():
     data = request.json
-    selected_cities = data.get("cities")
+    selected_cities = data.get("cities", [])
     start_city = data.get("start_city")
 
     if not selected_cities or len(selected_cities) < 2:
@@ -242,12 +224,10 @@ def plan():
     if len(selected_cities) > 15:
         return jsonify({"error": "Please select 15 or fewer cities for performance reasons."}), 400
 
-    # Time and run brute force approach
     start_time = time.time()
     bf_route, bf_distance, bf_all_routes = tsp_brute_force(selected_cities, start_city)
     bf_time = time.time() - start_time
     
-    # Time and run DP approach
     start_time = time.time()
     dp_route, dp_distance, _ = tsp_dp(selected_cities, start_city)
     dp_time = time.time() - start_time
@@ -287,8 +267,6 @@ def get_city_info():
 
 if __name__ == "__main__":
     app.run(debug=True)
-
-
 
 
     
