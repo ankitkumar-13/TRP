@@ -86,13 +86,13 @@ def establish_default_con(database:str = None, user="root", password="", host="1
     except mysql.connector.Error as err:
         if (err.errno == errorcode.ER_ACCESS_DENIED_ERROR):
             msg = "Either username or password is wrong."
-            print(msg); log(msg)
+            print(msg); log(str(msg))
         elif (err.errno == errorcode.ER_BAD_DB_ERROR):
             msg = f"No Database named '{{database}}' found on the MySQL server."
-            print(msg); log(msg)
+            print(msg); log(str(msg))
         else:
-            msg = "Unknown Error : " + err
-            print(msg); log(msg)
+            msg = "Unknown Error : " + str(err)
+            print(msg); log(str(msg))
     else:
         log("Returned MySQLConnection object.")
         return con
@@ -147,10 +147,15 @@ def check_if_con_active(con :mysql.connector.MySQLConnection) -> bool:
 
 
 def getAllCities(state = "Uttarakhand"):
+    log("Trying to connect to default database.")
     con = establish_default_con("trp_state_db")
     if con==None:
+        log("Trying to connect to MySQL Server without database.")
         con = establish_default_con()
-        create_db(con)    
+        if(con!=None):
+            create_db(con)
+        else:
+            raise Exception("Cannot Connect to MySQL Server")
     cities = []
     cur = con.cursor()
     cur.execute(f"""SELECT name, culture, unique_features, image_path from trp_state_{state.lower()}_table""")
