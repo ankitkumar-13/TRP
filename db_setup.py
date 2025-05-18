@@ -86,15 +86,15 @@ def establish_default_con(database:str = None, user="root", password="", host="1
     except mysql.connector.Error as err:
         if (err.errno == errorcode.ER_ACCESS_DENIED_ERROR):
             msg = "Either username or password is wrong."
-            print(msg); log(str(msg))
+            print(msg); log(str(msg), 1)
         elif (err.errno == errorcode.ER_BAD_DB_ERROR):
             msg = f"No Database named '{{database}}' found on the MySQL server."
-            print(msg); log(str(msg))
+            print(msg); log(str(msg), 1)
         else:
             msg = "Unknown Error : " + str(err)
-            print(msg); log(str(msg))
+            print(msg); log(str(msg), 1)
     else:
-        log("Returned MySQLConnection object.")
+        log("Returned MySQLConnection object.", 1)
         return con
     finally:
         log("Exiting the establish_default_con() function...", 1)
