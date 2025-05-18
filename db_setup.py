@@ -11,6 +11,7 @@ def get_lat_long(place_name):
         Send a request(GET Request) to API.
         Response is in a format format like -> [ {'lat': 12.45324, 'long': 54.56577} ] 
     """
+    log("Inside the get_lat_long function.")
     url = "https://nominatim.openstreetmap.org/search"
     params = {
         "q": place_name,
@@ -24,8 +25,12 @@ def get_lat_long(place_name):
     if data:
         lat = data[0]['lat']
         lon = data[0]['lon']
+        log(f"Sent a request and got the response -> (requested_location = {place_name}, latitude = {lat}, longitude = {lon})", 1)
+        log("Exiting the lat_long_function", 1)
         return float(lat), float(lon)
     else:
+        log("Sent a request and got no response -> ", 1)
+        log("Exiting the lat_long_function", 1)
         return None
 
 class City:
