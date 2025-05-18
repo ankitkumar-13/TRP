@@ -126,7 +126,7 @@ def plan():
     dp_route, dp_distance, _ = tsp_dp(selected_cities, start_city)
     dp_time = time.time() - start_time
     
-    if not bf_route or not dp_route:
+    if not bf_route and not dp_route:
         return jsonify({"error": "Could not calculate a route with the selected cities."}), 400
 
     return jsonify({
